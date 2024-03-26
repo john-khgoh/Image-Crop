@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -47,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlin.math.roundToInt
 
 
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -107,11 +109,20 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
             offsetXImage = (size.width - finalWidth) / 2
             offsetYImage = (size.height - finalHeight) / 2
 
-            drawImage(
-                image = bitmap.asImageBitmap(),
-                //dstOffset = IntOffset(offsetXImage.toInt(), offsetYImage.toInt()),
-                dstSize = IntSize(finalWidth, finalHeight),
-            )
+            //Darken the background image when allowCropBool is true (previewing the crop image)
+            when(uiViewModel.uiState.value.allowCropBool.value) {
+                false -> drawImage(
+                    image = bitmap.asImageBitmap(),
+                    //dstOffset = IntOffset(offsetXImage.toInt(), offsetYImage.toInt()),
+                    dstSize = IntSize(finalWidth, finalHeight),
+                )
+                true -> drawImage(
+                    image = bitmap.asImageBitmap(),
+                    dstSize = IntSize(finalWidth, finalHeight),
+                    blendMode = BlendMode.Overlay
+                )
+            }
+
 
             //Set the position to the center of image at the beginning
             if (!flag) {
@@ -137,14 +148,17 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 offset_y = finalHeight - (cropSquareY * zoom)
             }
 
-            //Draw the cropbox
-            rect = drawRect(
-                color = cropSquareColor,
-                topLeft = Offset(offset_x, offset_y),
-                size = Size(cropSquareX * zoom, cropSquareY * zoom),
-                style = Stroke(2.dp.toPx())
-            )
-            rect
+            if(!uiViewModel.uiState.value.allowCropBool.value) {
+                //Draw the cropbox when allowCropBool is true (not previewing the crop image)
+                rect = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(offset_x, offset_y),
+                    size = Size(cropSquareX * zoom, cropSquareY * zoom),
+                    style = Stroke(2.dp.toPx())
+                )
+                rect
+            }
+
 
             widthRatio = (width.toFloat() / finalWidth.toFloat())
             heightRatio = (height.toFloat() / finalHeight.toFloat())
@@ -195,14 +209,41 @@ fun cropTopBar(uiViewModel: UiViewModel) {
         title = {},
         colors = TopAppBarDefaults.smallTopAppBarColors(),
         actions = {
-            IconButton(
-                onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value}
-            ) {
-                Column() {
-                    Icon(painter = painterResource(R.drawable.crop_24px), contentDescription = null)
-                    Text("Crop",style= MaterialTheme.typography.labelSmall)
+            //Crop
+            if(!uiViewModel.uiState.value.allowCropBool.value) {
+                IconButton(
+                    onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value}
+                ) {
+                    Column() {
+                        Icon(painter = painterResource(R.drawable.crop_24px), contentDescription = null)
+                        Text("Crop",style= MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
+            else {
+                //Cancel
+                IconButton(
+                    onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value}
+                ) {
+                    Column() {
+                        Icon(painter = painterResource(R.drawable.close_24px), contentDescription = null)
+                        Text("Cancel",style= MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                //Accept
+                IconButton(
+                    onClick = {}
+                ) {
+                    Column() {
+                        Icon(painter = painterResource(R.drawable.done_24px), contentDescription = null)
+                        Text("Accept",style= MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+
+
+
         }
     )
 
@@ -215,17 +256,17 @@ fun resultDialog(
     cropSquareY: Int,
     zoom: Float
 ) {
-    val cardHeight = 157
-    val cardWidth = 157
+    val cardHeight = 156
+    val cardWidth = 156
 
     Dialog(onDismissRequest = {
         uiViewModel.uiState.value.cropResultReady.value = false
         uiViewModel.uiState.value.allowCropBool.value = false}) {
         Card(
             modifier = Modifier
-                .background(color = Color.Unspecified, RoundedCornerShape(0.dp))
-                .height((cardHeight * zoom).toInt().dp)
-                .width((cardWidth * zoom).toInt().dp)
+                .background(color = Color.Unspecified)
+                .height((cardHeight * zoom).roundToInt().dp)
+                .width((cardWidth * zoom).roundToInt().dp)
 
         ) {
 

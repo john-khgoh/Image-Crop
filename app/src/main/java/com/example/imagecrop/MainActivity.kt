@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
 fun imageCrop(modifier: Modifier = Modifier) {
     var context = LocalContext.current
     var uiViewModel = UiViewModel(true, context = context)
-    var imageBitmap = ImageBitmap.imageResource(R.drawable.cat)
+    var imageBitmap = ImageBitmap.imageResource(R.drawable.handwriting_004)
     var bitmap =  imageBitmap.asAndroidBitmap()
     crop(1.0f,bitmap,uiViewModel)
 
