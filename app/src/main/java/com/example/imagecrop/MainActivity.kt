@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity() {
 fun imageCrop(modifier: Modifier = Modifier) {
     var context = LocalContext.current
     var uiViewModel = UiViewModel(true, context = context)
-    var imageBitmap = ImageBitmap.imageResource(R.drawable.handwriting_004)
+    var imageBitmap = ImageBitmap.imageResource(R.drawable.cat)
     var bitmap =  imageBitmap.asAndroidBitmap()
     crop(1.0f,bitmap,uiViewModel)
 
@@ -61,6 +62,20 @@ data class UiState constructor(
     var cropResultReady: MutableState<Boolean> = mutableStateOf(false),
     var errorDialog: MutableState<Boolean> = mutableStateOf(false),
     var cropResult: MutableState<Bitmap?> = mutableStateOf(null),
-    var context: Context
+    var context: Context,
+    var westFlag: MutableState<Boolean> = mutableStateOf(false),
+    var northFlag: MutableState<Boolean> = mutableStateOf(false),
+    var eastFlag: MutableState<Boolean> = mutableStateOf(false),
+    var southFlag: MutableState<Boolean> = mutableStateOf(false),
+    var offsetX: MutableState<Float> = mutableStateOf(0f),
+    var offsetY: MutableState<Float> = mutableStateOf(0f),
+    var cropSquareX: MutableState<Int> = mutableStateOf(400),
+    var cropSquareY: MutableState<Int> = mutableStateOf(400),
+    var thresholdX: MutableState<Int> = mutableStateOf(65),
+    var thresholdY: MutableState<Int> = mutableStateOf(65),
+    //var offsetXincrement: MutableState<Float> = mutableStateOf(0f),
+    //var offsetYincrement: MutableState<Float> = mutableStateOf(0f),
+    //var cropSquareXincrement: MutableState<Int> = mutableStateOf(10),
+    //var cropSquareYincrement: MutableState<Int> = mutableStateOf(10),
 )
 

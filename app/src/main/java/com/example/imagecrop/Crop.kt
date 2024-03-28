@@ -8,8 +8,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlin.math.roundToInt
 
-
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
@@ -60,8 +61,8 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     var finalHeight = 0
     var offsetXImage = 0f
     var offsetYImage = 0f
-    var cropSquareX = 400
-    var cropSquareY = 400
+    //var cropSquareX by remember {mutableStateOf(400)}
+    //var cropSquareY by remember {mutableStateOf(400)}
     //var cropSquareColor = Color(0xFFFEFEFE)
     var cropSquareColor = Color.DarkGray
     var widthRatio: Float = 0f
@@ -76,7 +77,18 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     var rect by remember {mutableStateOf(Unit)}
     var flag by remember {mutableStateOf(false)}
 
-    Column() {
+    var zoomX by remember {mutableStateOf(1f)}
+    var zoomY by remember {mutableStateOf(1f)}
+
+    var dragPos by remember {mutableStateOf(Offset(0f,0f))}
+    var previousDragPos by remember {mutableStateOf(Offset(0f,0f))}
+    var dragMagnitude by remember {mutableStateOf(Offset(0f,0f))}
+    //var pointThresholdX by remember {mutableStateOf(50)}
+    //var pointThresholdY by remember {mutableStateOf(50)}
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         cropTopBar(uiViewModel)
         Spacer(modifier = Modifier.size(10.dp))
         Canvas(
@@ -87,7 +99,16 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     detectTransformGestures { centroid, pan, gestureZoom, gestureRotate ->
                         val newScale = zoom * gestureZoom
                         offset += pan
-                        zoom = newScale
+                        //zoom = newScale
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGesturesAfterLongPress { change, dragAmount ->
+                        dragPos = change.position //Location of movement
+                        dragMagnitude = dragAmount // Direction of movement
+                        Log.d("Aeblesaft",dragMagnitude.toString())
+                        //zoomX *= dragAmount.x
+                        //zoomY *= dragAmount.y
                     }
                 }
 
@@ -109,6 +130,92 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
             offsetXImage = (size.width - finalWidth) / 2
             offsetYImage = (size.height - finalHeight) / 2
 
+            //Set the position to the center of image at the beginning
+            if (!flag) {
+                offset = Offset(
+                    (finalWidth.toFloat() - uiViewModel.uiState.value.cropSquareX.value) / 2,
+                    (finalHeight.toFloat() - uiViewModel.uiState.value.cropSquareY.value) / 2
+                )
+                flag = true
+            }
+
+            uiViewModel.uiState.value.offsetX.value = offset.x
+            uiViewModel.uiState.value.offsetY.value = offset.y
+
+            //Set the threshold according to be 1/6th of cropSquare size (double of 1/3rd, but convenient for multiplication)
+            uiViewModel.uiState.value.thresholdX.value = uiViewModel.uiState.value.cropSquareX.value/6
+            uiViewModel.uiState.value.thresholdY.value = uiViewModel.uiState.value.cropSquareY.value/6
+
+
+            //If there's a change to dragPos
+            if(previousDragPos != dragPos) {
+                //If none of the flags are currently raised, run raiseDirectionalFlag
+                // to check if the offset is within bounds of the crop square
+                if(!uiViewModel.uiState.value.westFlag.value &&
+                    !uiViewModel.uiState.value.northFlag.value &&
+                    !uiViewModel.uiState.value.eastFlag.value &&
+                    !uiViewModel.uiState.value.southFlag.value
+                ) {
+                    raiseDirectionalFlag(dragPos,uiViewModel)
+                }
+
+                //If westFlag is raised
+                if(uiViewModel.uiState.value.westFlag.value) {
+                    //Outside changes
+                    if(dragMagnitude.x < 0) {
+                        uiViewModel.uiState.value.offsetX.value -= dragMagnitude.x
+                        uiViewModel.uiState.value.cropSquareX.value -= dragMagnitude.x.toInt()
+                    }
+                    //Inside changes
+                    else if(dragMagnitude.x > 0) {
+                        uiViewModel.uiState.value.offsetX.value -= dragMagnitude.x
+                        uiViewModel.uiState.value.cropSquareX.value -= dragMagnitude.x.toInt()
+                    }
+                }
+                //If northFlag is raised
+                else if(uiViewModel.uiState.value.northFlag.value) {
+                    //Outside changes
+                    if(dragMagnitude.y < 0) {
+                        uiViewModel.uiState.value.offsetY.value -= dragMagnitude.y
+                        uiViewModel.uiState.value.cropSquareY.value -= dragMagnitude.y.toInt()
+                    }
+                    //Inside changes
+                    else if(dragMagnitude.y > 0) {
+                        uiViewModel.uiState.value.offsetY.value -= dragMagnitude.y
+                        uiViewModel.uiState.value.cropSquareY.value -= dragMagnitude.y.toInt()
+                    }
+                }
+                //If eastFlag is raised
+                else if(uiViewModel.uiState.value.eastFlag.value) {
+                    //Outside changes
+                    if(dragMagnitude.x > 0) {
+                        uiViewModel.uiState.value.cropSquareX.value += dragMagnitude.x.toInt()
+                    }
+                    //Inside changes
+                    else if(dragMagnitude.x < 0) {
+                        uiViewModel.uiState.value.cropSquareX.value += dragMagnitude.x.toInt()
+                    }
+                }
+                //If southFlag is raised
+                else if(uiViewModel.uiState.value.southFlag.value) {
+                    //Outside changes
+                    if(dragMagnitude.y > 0) {
+                        uiViewModel.uiState.value.cropSquareY.value += dragMagnitude.y.toInt()
+                    }
+                    //Inside changes
+                    else if(dragMagnitude.y < 0) {
+                        uiViewModel.uiState.value.cropSquareY.value += dragMagnitude.y.toInt()
+                    }
+                }
+            }
+            //If there's no change to dragPos, set all directional flags to false
+            else {
+                uiViewModel.uiState.value.westFlag.value = false
+                uiViewModel.uiState.value.northFlag.value = false
+                uiViewModel.uiState.value.eastFlag.value = false
+                uiViewModel.uiState.value.southFlag.value = false
+            }
+
             //Darken the background image when allowCropBool is true (previewing the crop image)
             when(uiViewModel.uiState.value.allowCropBool.value) {
                 false -> drawImage(
@@ -123,42 +230,29 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 )
             }
 
-
-            //Set the position to the center of image at the beginning
-            if (!flag) {
-                offset = Offset(
-                    (finalWidth.toFloat() - cropSquareX) / 2,
-                    (finalHeight.toFloat() - cropSquareY) / 2
-                )
-                flag = true
-            }
-
-            var offset_x = offset.x
-            var offset_y = offset.y
-
             //Bounding the crop box to the dimensions of the image
-            if (offset_x < 0f) {
-                offset_x = 0f
-            } else if ((offset_x + (cropSquareX * zoom)) > finalWidth) {
-                offset_x = finalWidth - (cropSquareX * zoom)
+            if (uiViewModel.uiState.value.offsetX.value < 0f) {
+                uiViewModel.uiState.value.offsetX.value = 0f
+            } else if ((uiViewModel.uiState.value.offsetX.value + (uiViewModel.uiState.value.cropSquareX.value * zoomX)) > finalWidth) {
+                uiViewModel.uiState.value.offsetX.value = finalWidth - (uiViewModel.uiState.value.cropSquareX.value * zoom)
             }
-            if (offset_y < 0f) {
-                offset_y = 0f
-            } else if ((offset_y + (cropSquareY * zoom)) > finalHeight) {
-                offset_y = finalHeight - (cropSquareY * zoom)
+            if (uiViewModel.uiState.value.offsetY.value < 0f) {
+                uiViewModel.uiState.value.offsetY.value = 0f
+            } else if ((uiViewModel.uiState.value.offsetY.value + (uiViewModel.uiState.value.cropSquareY.value * zoomY)) > finalHeight) {
+                uiViewModel.uiState.value.offsetY.value = finalHeight - (uiViewModel.uiState.value.cropSquareY.value * zoom)
             }
 
             if(!uiViewModel.uiState.value.allowCropBool.value) {
                 //Draw the cropbox when allowCropBool is true (not previewing the crop image)
                 rect = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(offset_x, offset_y),
-                    size = Size(cropSquareX * zoom, cropSquareY * zoom),
-                    style = Stroke(2.dp.toPx())
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value, uiViewModel.uiState.value.offsetY.value),
+                    //size = Size(cropSquareX * zoom, cropSquareY * zoom),
+                    size = Size(uiViewModel.uiState.value.cropSquareX.value * zoomX, uiViewModel.uiState.value.cropSquareY.value * zoomY),
+                    style = Stroke(3.dp.toPx())
                 )
                 rect
             }
-
 
             widthRatio = (width.toFloat() / finalWidth.toFloat())
             heightRatio = (height.toFloat() / finalHeight.toFloat())
@@ -168,10 +262,12 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 try {
                     uiViewModel.uiState.value.cropResult.value = Bitmap.createBitmap(
                         bitmap,
-                        (widthRatio * offset_x).toInt(), //x = width
-                        (heightRatio * offset_y).toInt(), //y = height
-                        (widthRatio * cropSquareX * zoom).toInt(),
-                        (heightRatio * cropSquareY * zoom).toInt()
+                        (widthRatio * uiViewModel.uiState.value.offsetX.value).toInt(), //x = width
+                        (heightRatio * uiViewModel.uiState.value.offsetY.value).toInt(), //y = height
+                        //(widthRatio * cropSquareX * zoom).toInt(),
+                        (widthRatio * uiViewModel.uiState.value.cropSquareX.value * zoomX).toInt(),
+                        //(heightRatio * cropSquareY * zoom).toInt()
+                        (heightRatio * uiViewModel.uiState.value.cropSquareY.value * zoomY).toInt()
                     )
                     uiViewModel.uiState.value.cropResultReady.value = true
                 }
@@ -181,16 +277,22 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     uiViewModel.uiState.value.allowCropBool.value = false
                     //Resets the crop box to the center
                     offset = Offset(
-                        (finalWidth.toFloat() - cropSquareX) / 2,
-                        (finalHeight.toFloat() - cropSquareY) / 2
+                        (finalWidth.toFloat() - uiViewModel.uiState.value.cropSquareX.value) / 2,
+                        (finalHeight.toFloat() - uiViewModel.uiState.value.cropSquareY.value) / 2
                     )
-                    zoom = 1f
+                    //zoom = 1f
+                    zoomX = 1f
+                    zoomY = 1f
                 }
             }
+
+            //At the end, set previousDragPos to dragPos
+            previousDragPos = dragPos
         }
         when {
             uiViewModel.uiState.value.cropResultReady.value -> {
-                resultDialog(uiViewModel = uiViewModel, cropSquareX, cropSquareY, zoom)
+                resultDialog(uiViewModel = uiViewModel, zoomX, zoomY)
+                //resultDialog(uiViewModel = uiViewModel, cropSquareX, cropSquareY, zoom)
             }
         }
         when {
@@ -215,7 +317,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                     onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value}
                 ) {
                     Column() {
-                        Icon(painter = painterResource(R.drawable.crop_24px), contentDescription = null)
+                        Icon(painter = painterResource(R.drawable.crop_24px), contentDescription = "Crop the image using the crop square. Pan to move and pinch to increase or decrease its size. ")
                         Text("Crop",style= MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -252,9 +354,11 @@ fun cropTopBar(uiViewModel: UiViewModel) {
 @Composable
 fun resultDialog(
     uiViewModel: UiViewModel,
-    cropSquareX: Int,
-    cropSquareY: Int,
-    zoom: Float
+    //cropSquareX: Int,
+    //cropSquareY: Int,
+    //zoom: Float
+    zoomX: Float,
+    zoomY: Float
 ) {
     val cardHeight = 156
     val cardWidth = 156
@@ -265,8 +369,8 @@ fun resultDialog(
         Card(
             modifier = Modifier
                 .background(color = Color.Unspecified)
-                .height((cardHeight * zoom).roundToInt().dp)
-                .width((cardWidth * zoom).roundToInt().dp)
+                .width((cardWidth * zoomX).roundToInt().dp)
+                .height((cardHeight * zoomY).roundToInt().dp)
 
         ) {
 
@@ -274,7 +378,7 @@ fun resultDialog(
                 drawImage(
                     uiViewModel.uiState.value.cropResult.value!!.asImageBitmap(),
                     //dstOffset = IntOffset(offsetXImage.toInt(), offsetYImage.toInt()),
-                    dstSize = IntSize((cropSquareX*zoom).toInt(), (cropSquareY*zoom).toInt()),
+                    dstSize = IntSize((uiViewModel.uiState.value.cropSquareX.value*zoomX).toInt(), (uiViewModel.uiState.value.cropSquareY.value*zoomY).toInt()),
                 )
             }
         }
@@ -326,6 +430,59 @@ fun errorDialog(
                 }
             }
         }
+    }
+}
+
+//Function to raise a directional flag for the size change of cropping square
+fun raiseDirectionalFlag(dragPos: Offset, uiViewModel: UiViewModel) {
+    var offsetX = uiViewModel.uiState.value.offsetX.value
+    var offsetY = uiViewModel.uiState.value.offsetY.value
+    var cropSquareX = uiViewModel.uiState.value.cropSquareX.value
+    var cropSquareY = uiViewModel.uiState.value.cropSquareY.value
+    var thresholdX = uiViewModel.uiState.value.thresholdX.value
+    var thresholdY = uiViewModel.uiState.value.thresholdY.value
+
+    //The 4 directional points of the crop square
+    var westPoint = Offset(offsetX,offsetY + (0.5*cropSquareY).toFloat())
+    var northPoint = Offset(offsetX + (0.5*cropSquareX).toFloat(),offsetY)
+    var eastPoint = Offset(offsetX + cropSquareX,offsetY + (0.5 * cropSquareY).toFloat())
+    var southPoint = Offset(offsetX + (0.5*cropSquareX).toFloat(),offsetY+cropSquareY)
+
+    //Defining westPoint boundaries
+    var westPoint_west = westPoint.x - thresholdX
+    var westPoint_north = westPoint.y - thresholdY
+    var westPoint_east = westPoint.x + thresholdX
+    var westPoint_south = westPoint.y + thresholdY
+
+    //Defining northPoint boundaries
+    var northPoint_west = northPoint.x - thresholdX
+    var northPoint_north = northPoint.y - thresholdY
+    var northPoint_east = northPoint.x + thresholdX
+    var northPoint_south = northPoint.y + thresholdY
+
+    //Defining eastPoint boundaries
+    var eastPoint_west = eastPoint.x - thresholdX
+    var eastPoint_north = eastPoint.y - thresholdY
+    var eastPoint_east = eastPoint.x + thresholdX
+    var eastPoint_south = eastPoint.y + thresholdY
+
+    //Defining southPoint boundaries
+    var southPoint_west = southPoint.x - thresholdX
+    var southPoint_north = southPoint.y - thresholdY
+    var southPoint_east = southPoint.x + thresholdX
+    var southPoint_south = southPoint.y + thresholdY
+
+    if(dragPos.x >= westPoint_west && dragPos.x <= westPoint_east && dragPos.y >= westPoint_north && dragPos.y <= westPoint_south) {
+        uiViewModel.uiState.value.westFlag.value = true
+    }
+    else if(dragPos.x >= northPoint_west && dragPos.x <= northPoint_east && dragPos.y >= northPoint_north && dragPos.y <= northPoint_south) {
+        uiViewModel.uiState.value.northFlag.value = true
+    }
+    else if(dragPos.x >= eastPoint_west && dragPos.x <= eastPoint_east && dragPos.y >= eastPoint_north && dragPos.y <= eastPoint_south) {
+        uiViewModel.uiState.value.eastFlag.value = true
+    }
+    else if(dragPos.x >= southPoint_west && dragPos.x <= southPoint_east && dragPos.y >= southPoint_north && dragPos.y <= southPoint_south) {
+        uiViewModel.uiState.value.southFlag.value = true
     }
 }
 
