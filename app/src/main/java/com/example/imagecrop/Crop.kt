@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -21,12 +22,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.AbsoluteCutCornerShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -42,6 +46,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,6 +56,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
 
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -62,9 +68,6 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     var finalHeight = 0
     var offsetXImage = 0f
     var offsetYImage = 0f
-    //var cropSquareX by remember {mutableStateOf(400)}
-    //var cropSquareY by remember {mutableStateOf(400)}
-    //var cropSquareColor = Color(0xFFFEFEFE)
     var cropSquareColor = Color.DarkGray
     var widthRatio: Float = 0f
     var heightRatio: Float = 0f
@@ -84,6 +87,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     var dragPos by remember {mutableStateOf(Offset(0f,0f))}
     var previousDragPos by remember {mutableStateOf(Offset(0f,0f))}
     var dragMagnitude by remember {mutableStateOf(Offset(0f,0f))}
+    var polygonSize by remember {mutableStateOf(30f)}
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -257,68 +261,80 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 )
                 rect
 
+                //Dynamic polygonSize
+                if(uiViewModel.uiState.value.cropSquareX.value<=50 || uiViewModel.uiState.value.cropSquareY.value<=50) {
+                    polygonSize = 15f
+                }
+                else if((uiViewModel.uiState.value.cropSquareX.value in 51..99) ||
+                    (uiViewModel.uiState.value.cropSquareY.value in 51..99)) {
+                    polygonSize = 20f
+                }
+                else {
+                    polygonSize = 30f
+                }
+
                 //Draw the resize polygons
                 var westPolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value-15f,
-                        uiViewModel.uiState.value.offsetY.value + (0.5 * uiViewModel.uiState.value.cropSquareY.value).toFloat()-15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value-(polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value + (0.5 * uiViewModel.uiState.value.cropSquareY.value).toFloat()-(polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 westPolygon
 
                 var northPolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-15f,
-                        uiViewModel.uiState.value.offsetY.value-15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-(polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value-(polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 northPolygon
 
                 var eastPolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - 15f,
-                        uiViewModel.uiState.value.offsetY.value + (0.5*uiViewModel.uiState.value.cropSquareY.value).toFloat()-15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - (polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value + (0.5*uiViewModel.uiState.value.cropSquareY.value).toFloat()-(polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 eastPolygon
 
                 var southPolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-15f,
-                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - 15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-(polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - (polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 southPolygon
 
                 var nwPolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value-15f,
-                        uiViewModel.uiState.value.offsetY.value-15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value-(polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value-(polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 nwPolygon
 
                 var nePolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value+uiViewModel.uiState.value.cropSquareX.value-15f,
-                        uiViewModel.uiState.value.offsetY.value-15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value+uiViewModel.uiState.value.cropSquareX.value-(polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value-(polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 nePolygon
 
                 var sePolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - 15f,
-                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - 15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - (polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - (polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 sePolygon
 
                 var swPolygon = drawRect(
                     color = cropSquareColor,
-                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value - 15f,
-                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - 15f),
-                    size = Size(30f,30f)
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value - (polygonSize/2),
+                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - (polygonSize/2)),
+                    size = Size(polygonSize,polygonSize)
                 )
                 swPolygon
             }
@@ -359,7 +375,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
         }
         when {
             uiViewModel.uiState.value.cropResultReady.value -> {
-                resultDialog(uiViewModel = uiViewModel, zoomX, zoomY)
+                resultDialog(uiViewModel = uiViewModel)
                 //resultDialog(uiViewModel = uiViewModel, cropSquareX, cropSquareY, zoom)
             }
         }
@@ -430,29 +446,24 @@ fun cropTopBar(uiViewModel: UiViewModel) {
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun resultDialog(
-    uiViewModel: UiViewModel,
-    //cropSquareX: Int,
-    //cropSquareY: Int,
-    //zoom: Float
-    zoomX: Float,
-    zoomY: Float
+    uiViewModel: UiViewModel
 ) {
     Dialog(onDismissRequest = {
         uiViewModel.uiState.value.cropResultReady.value = false
-        uiViewModel.uiState.value.allowCropBool.value = false}) {
+        uiViewModel.uiState.value.allowCropBool.value = false},
+    ) {
         Card(
             modifier = Modifier
                 .background(color = Color.Unspecified)
                 .width((0.4*uiViewModel.uiState.value.cropSquareX.value-12).dp)
                 .height((0.4*uiViewModel.uiState.value.cropSquareY.value-10).dp)
-
         ) {
 
             Canvas(modifier = Modifier) {
                 drawImage(
                     uiViewModel.uiState.value.cropResult.value!!.asImageBitmap(),
                     //dstOffset = IntOffset(offsetXImage.toInt(), offsetYImage.toInt()),
-                    dstSize = IntSize((uiViewModel.uiState.value.cropSquareX.value*zoomX).toInt(), (uiViewModel.uiState.value.cropSquareY.value*zoomY).toInt()),
+                    dstSize = IntSize((uiViewModel.uiState.value.cropSquareX.value).toInt(), (uiViewModel.uiState.value.cropSquareY.value).toInt()),
                 )
             }
         }
@@ -467,7 +478,6 @@ fun errorDialog(
     Dialog(onDismissRequest = {uiViewModel.uiState.value.errorDialog.value = false}) {
         Card(modifier = Modifier
             .background(color = Color.White,RoundedCornerShape(24.dp))
-            //.height(100.dp)
         ) {
             Column(
                 verticalArrangement = Arrangement.Center,

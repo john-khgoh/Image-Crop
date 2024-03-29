@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
 fun imageCrop(modifier: Modifier = Modifier) {
     var context = LocalContext.current
     var uiViewModel = UiViewModel(true, context = context)
-    var imageBitmap = ImageBitmap.imageResource(R.drawable.handwriting_004)
+    var imageBitmap = ImageBitmap.imageResource(R.drawable.cat)
     var bitmap =  imageBitmap.asAndroidBitmap()
     crop(1.0f,bitmap,uiViewModel)
 
@@ -73,9 +73,5 @@ data class UiState constructor(
     var cropSquareY: MutableState<Int> = mutableStateOf(400),
     var thresholdX: MutableState<Int> = mutableStateOf(65),
     var thresholdY: MutableState<Int> = mutableStateOf(65),
-    //var offsetXincrement: MutableState<Float> = mutableStateOf(0f),
-    //var offsetYincrement: MutableState<Float> = mutableStateOf(0f),
-    //var cropSquareXincrement: MutableState<Int> = mutableStateOf(10),
-    //var cropSquareYincrement: MutableState<Int> = mutableStateOf(10),
 )
 
