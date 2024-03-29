@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -169,7 +170,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     }
                 }
                 //If northFlag is raised
-                else if(uiViewModel.uiState.value.northFlag.value) {
+                if(uiViewModel.uiState.value.northFlag.value) {
                     //Outside changes
                     if(dragMagnitude.y < 0) {
                         uiViewModel.uiState.value.offsetY.value += dragMagnitude.y
@@ -184,7 +185,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     }
                 }
                 //If eastFlag is raised
-                else if(uiViewModel.uiState.value.eastFlag.value) {
+                if(uiViewModel.uiState.value.eastFlag.value) {
                     //Outside changes
                     if(dragMagnitude.x > 0) {
                         uiViewModel.uiState.value.cropSquareX.value += dragMagnitude.x.toInt()
@@ -195,7 +196,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     }
                 }
                 //If southFlag is raised
-                else if(uiViewModel.uiState.value.southFlag.value) {
+                if(uiViewModel.uiState.value.southFlag.value) {
                     //Outside changes
                     if(dragMagnitude.y > 0) {
                         uiViewModel.uiState.value.cropSquareY.value += dragMagnitude.y.toInt()
@@ -254,6 +255,71 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     style = Stroke(3.dp.toPx())
                 )
                 rect
+
+                //Draw the resize polygons
+                var westPolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value-15f,
+                        uiViewModel.uiState.value.offsetY.value + (0.5 * uiViewModel.uiState.value.cropSquareY.value).toFloat()-15f),
+                    size = Size(30f,30f)
+                )
+                westPolygon
+
+                var northPolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-15f,
+                        uiViewModel.uiState.value.offsetY.value-15f),
+                    size = Size(30f,30f)
+                )
+                northPolygon
+
+                var eastPolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - 15f,
+                        uiViewModel.uiState.value.offsetY.value + (0.5*uiViewModel.uiState.value.cropSquareY.value).toFloat()-15f),
+                    size = Size(30f,30f)
+                )
+                eastPolygon
+
+                var southPolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-15f,
+                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - 15f),
+                    size = Size(30f,30f)
+                )
+                southPolygon
+
+                var nwPolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value-15f,
+                        uiViewModel.uiState.value.offsetY.value-15f),
+                    size = Size(30f,30f)
+                )
+                nwPolygon
+
+                var nePolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value+uiViewModel.uiState.value.cropSquareX.value-15f,
+                        uiViewModel.uiState.value.offsetY.value-15f),
+                    size = Size(30f,30f)
+                )
+                nePolygon
+
+                var sePolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - 15f,
+                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - 15f),
+                    size = Size(30f,30f)
+                )
+                sePolygon
+
+                var swPolygon = drawRect(
+                    color = cropSquareColor,
+                    topLeft = Offset(uiViewModel.uiState.value.offsetX.value - 15f,
+                        uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - 15f),
+                    size = Size(30f,30f)
+                )
+                swPolygon
             }
 
             widthRatio = (width.toFloat() / finalWidth.toFloat())
@@ -353,6 +419,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
 
 }
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun resultDialog(
     uiViewModel: UiViewModel,
@@ -371,8 +438,8 @@ fun resultDialog(
         Card(
             modifier = Modifier
                 .background(color = Color.Unspecified)
-                .width((cardWidth * zoomX).roundToInt().dp)
-                .height((cardHeight * zoomY).roundToInt().dp)
+                .width((0.4*uiViewModel.uiState.value.cropSquareX.value-12).dp)
+                .height((0.4*uiViewModel.uiState.value.cropSquareY.value-10).dp)
 
         ) {
 
@@ -444,11 +511,15 @@ fun raiseDirectionalFlag(dragPos: Offset, uiViewModel: UiViewModel) {
     var thresholdX = uiViewModel.uiState.value.thresholdX.value
     var thresholdY = uiViewModel.uiState.value.thresholdY.value
 
-    //The 4 directional points of the crop square
+    //The 8 directional points of the crop square
     var westPoint = Offset(offsetX,offsetY + (0.5*cropSquareY).toFloat())
     var northPoint = Offset(offsetX + (0.5*cropSquareX).toFloat(),offsetY)
     var eastPoint = Offset(offsetX + cropSquareX,offsetY + (0.5 * cropSquareY).toFloat())
     var southPoint = Offset(offsetX + (0.5*cropSquareX).toFloat(),offsetY+cropSquareY)
+    var nwPoint = Offset(offsetX,offsetY)
+    var nePoint = Offset(offsetX+cropSquareX,offsetY)
+    var sePoint = Offset(offsetX + cropSquareX,offsetY +cropSquareY)
+    var swPoint = Offset(offsetX,offsetY+cropSquareY)
 
     //Defining westPoint boundaries
     var westPoint_west = westPoint.x - thresholdX
@@ -474,6 +545,30 @@ fun raiseDirectionalFlag(dragPos: Offset, uiViewModel: UiViewModel) {
     var southPoint_east = southPoint.x + thresholdX
     var southPoint_south = southPoint.y + thresholdY
 
+    //Defining the nwPoint boundaries
+    var nwPoint_west = nwPoint.x - thresholdX
+    var nwPoint_north = nwPoint.y - thresholdY
+    var nwPoint_east = nwPoint.x + thresholdX
+    var nwPoint_south = nwPoint.y + thresholdY
+
+    //Defining the nePoint boundaries
+    var nePoint_west = nePoint.x - thresholdX
+    var nePoint_north = nePoint.y - thresholdY
+    var nePoint_east = nePoint.x + thresholdX
+    var nePoint_south = nePoint.y + thresholdY
+
+    //Defining the sePoint boundaries
+    var sePoint_west = sePoint.x - thresholdX
+    var sePoint_north = sePoint.y - thresholdY
+    var sePoint_east = sePoint.x + thresholdX
+    var sePoint_south = sePoint.y + thresholdY
+
+    //Defining the swPoint boundaries
+    var swPoint_west = swPoint.x - thresholdX
+    var swPoint_north = swPoint.y - thresholdY
+    var swPoint_east = swPoint.x + thresholdX
+    var swPoint_south = swPoint.y + thresholdY
+
     if(dragPos.x >= westPoint_west && dragPos.x <= westPoint_east && dragPos.y >= westPoint_north && dragPos.y <= westPoint_south) {
         uiViewModel.uiState.value.westFlag.value = true
     }
@@ -485,6 +580,22 @@ fun raiseDirectionalFlag(dragPos: Offset, uiViewModel: UiViewModel) {
     }
     else if(dragPos.x >= southPoint_west && dragPos.x <= southPoint_east && dragPos.y >= southPoint_north && dragPos.y <= southPoint_south) {
         uiViewModel.uiState.value.southFlag.value = true
+    }
+    else if(dragPos.x >= nwPoint_west && dragPos.x <= nwPoint_east && dragPos.y >= nwPoint_north && dragPos.y <= nwPoint_south) {
+        uiViewModel.uiState.value.northFlag.value = true
+        uiViewModel.uiState.value.westFlag.value = true
+    }
+    else if(dragPos.x >= nePoint_west && dragPos.x <= nePoint_east && dragPos.y >= nePoint_north && dragPos.y <= nePoint_south) {
+        uiViewModel.uiState.value.northFlag.value = true
+        uiViewModel.uiState.value.eastFlag.value = true
+    }
+    else if(dragPos.x >= sePoint_west && dragPos.x <= sePoint_east && dragPos.y >= sePoint_north && dragPos.y <= sePoint_south) {
+        uiViewModel.uiState.value.southFlag.value = true
+        uiViewModel.uiState.value.eastFlag.value = true
+    }
+    else if(dragPos.x >= swPoint_west && dragPos.x <= swPoint_east && dragPos.y >= swPoint_north && dragPos.y <= swPoint_south) {
+        uiViewModel.uiState.value.southFlag.value = true
+        uiViewModel.uiState.value.westFlag.value = true
     }
 }
 
