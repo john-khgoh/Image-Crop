@@ -83,8 +83,6 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     var dragPos by remember {mutableStateOf(Offset(0f,0f))}
     var previousDragPos by remember {mutableStateOf(Offset(0f,0f))}
     var dragMagnitude by remember {mutableStateOf(Offset(0f,0f))}
-    //var pointThresholdX by remember {mutableStateOf(50)}
-    //var pointThresholdY by remember {mutableStateOf(50)}
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -106,7 +104,6 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     detectDragGesturesAfterLongPress { change, dragAmount ->
                         dragPos = change.position //Location of movement
                         dragMagnitude = dragAmount // Direction of movement
-                        Log.d("Aeblesaft",dragMagnitude.toString())
                         //zoomX *= dragAmount.x
                         //zoomY *= dragAmount.y
                     }
@@ -139,9 +136,6 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 flag = true
             }
 
-            uiViewModel.uiState.value.offsetX.value = offset.x
-            uiViewModel.uiState.value.offsetY.value = offset.y
-
             //Set the threshold according to be 1/6th of cropSquare size (double of 1/3rd, but convenient for multiplication)
             uiViewModel.uiState.value.thresholdX.value = uiViewModel.uiState.value.cropSquareX.value/6
             uiViewModel.uiState.value.thresholdY.value = uiViewModel.uiState.value.cropSquareY.value/6
@@ -163,12 +157,14 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 if(uiViewModel.uiState.value.westFlag.value) {
                     //Outside changes
                     if(dragMagnitude.x < 0) {
-                        uiViewModel.uiState.value.offsetX.value -= dragMagnitude.x
+                        uiViewModel.uiState.value.offsetX.value += dragMagnitude.x
+                        offset += Offset(dragMagnitude.x,0f)
                         uiViewModel.uiState.value.cropSquareX.value -= dragMagnitude.x.toInt()
                     }
                     //Inside changes
                     else if(dragMagnitude.x > 0) {
-                        uiViewModel.uiState.value.offsetX.value -= dragMagnitude.x
+                        uiViewModel.uiState.value.offsetX.value += dragMagnitude.x
+                        offset += Offset(dragMagnitude.x,0f)
                         uiViewModel.uiState.value.cropSquareX.value -= dragMagnitude.x.toInt()
                     }
                 }
@@ -176,12 +172,14 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 else if(uiViewModel.uiState.value.northFlag.value) {
                     //Outside changes
                     if(dragMagnitude.y < 0) {
-                        uiViewModel.uiState.value.offsetY.value -= dragMagnitude.y
+                        uiViewModel.uiState.value.offsetY.value += dragMagnitude.y
+                        offset += Offset(0f,dragMagnitude.y)
                         uiViewModel.uiState.value.cropSquareY.value -= dragMagnitude.y.toInt()
                     }
                     //Inside changes
                     else if(dragMagnitude.y > 0) {
-                        uiViewModel.uiState.value.offsetY.value -= dragMagnitude.y
+                        uiViewModel.uiState.value.offsetY.value += dragMagnitude.y
+                        offset += Offset(0f,dragMagnitude.y)
                         uiViewModel.uiState.value.cropSquareY.value -= dragMagnitude.y.toInt()
                     }
                 }
@@ -214,6 +212,9 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 uiViewModel.uiState.value.northFlag.value = false
                 uiViewModel.uiState.value.eastFlag.value = false
                 uiViewModel.uiState.value.southFlag.value = false
+
+                uiViewModel.uiState.value.offsetX.value = offset.x
+                uiViewModel.uiState.value.offsetY.value = offset.y
             }
 
             //Darken the background image when allowCropBool is true (previewing the crop image)
@@ -229,6 +230,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     blendMode = BlendMode.Overlay
                 )
             }
+
 
             //Bounding the crop box to the dimensions of the image
             if (uiViewModel.uiState.value.offsetX.value < 0f) {
