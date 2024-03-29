@@ -88,6 +88,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+
         cropTopBar(uiViewModel)
         Spacer(modifier = Modifier.size(10.dp))
         Canvas(
@@ -344,13 +345,12 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     uiViewModel.uiState.value.errorDialog.value = true
                     uiViewModel.uiState.value.allowCropBool.value = false
                     //Resets the crop box to the center
+                    uiViewModel.uiState.value.cropSquareX.value = 400
+                    uiViewModel.uiState.value.cropSquareY.value = 400
                     offset = Offset(
                         (finalWidth.toFloat() - uiViewModel.uiState.value.cropSquareX.value) / 2,
                         (finalHeight.toFloat() - uiViewModel.uiState.value.cropSquareY.value) / 2
                     )
-                    //zoom = 1f
-                    zoomX = 1f
-                    zoomY = 1f
                 }
             }
 
@@ -378,6 +378,15 @@ fun cropTopBar(uiViewModel: UiViewModel) {
     TopAppBar(
         title = {},
         colors = TopAppBarDefaults.smallTopAppBarColors(),
+        navigationIcon = {
+            IconButton(
+                onClick = {
+                    //navigate up
+                }
+            ) {
+                Icon(painter = painterResource(R.drawable.arrow_back_24px), contentDescription = null)
+            }
+        },
         actions = {
             //Crop
             if(!uiViewModel.uiState.value.allowCropBool.value) {
@@ -385,7 +394,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                     onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value}
                 ) {
                     Column() {
-                        Icon(painter = painterResource(R.drawable.crop_24px), contentDescription = "Crop the image using the crop square. Pan to move and pinch to increase or decrease its size. ")
+                        Icon(painter = painterResource(R.drawable.crop_24px), contentDescription = null)
                         Text("Crop",style= MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -416,7 +425,6 @@ fun cropTopBar(uiViewModel: UiViewModel) {
 
         }
     )
-
 }
 
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -429,9 +437,6 @@ fun resultDialog(
     zoomX: Float,
     zoomY: Float
 ) {
-    val cardHeight = 156
-    val cardWidth = 156
-
     Dialog(onDismissRequest = {
         uiViewModel.uiState.value.cropResultReady.value = false
         uiViewModel.uiState.value.allowCropBool.value = false}) {
