@@ -462,8 +462,7 @@ fun resultDialog(
             Canvas(modifier = Modifier) {
                 drawImage(
                     uiViewModel.uiState.value.cropResult.value!!.asImageBitmap(),
-                    //dstOffset = IntOffset(offsetXImage.toInt(), offsetYImage.toInt()),
-                    dstSize = IntSize((uiViewModel.uiState.value.cropSquareX.value).toInt(), (uiViewModel.uiState.value.cropSquareY.value).toInt()),
+                    dstSize = IntSize((uiViewModel.uiState.value.cropSquareX.value), (uiViewModel.uiState.value.cropSquareY.value)),
                 )
             }
         }
