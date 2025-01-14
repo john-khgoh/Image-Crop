@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ImageCrop</string>
+    <dimen name="reference">100dp</dimen>
 </resources>

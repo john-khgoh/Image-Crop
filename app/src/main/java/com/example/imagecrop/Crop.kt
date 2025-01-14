@@ -1,6 +1,5 @@
 package com.example.imagecrop
 
-import android.annotation.SuppressLint
 import android.content.res.Configuration
 
 import android.graphics.Bitmap
@@ -38,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,43 +59,40 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
-@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
-fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
+fun crop(imageScale: Float, state: State<UiState>, uiViewModel: UiViewModel) {
 
-    uiViewModel.uiState.value.bitmap.value = bitmap
-    uiViewModel.uiState.value.currentOrientation.value = LocalConfiguration.current.orientation
+    state.value.currentOrientation.value = LocalConfiguration.current.orientation
 
-    if(!uiViewModel.uiState.value.orientationSavedFlag.value) {
-        uiViewModel.uiState.value.previousOrientation.value = uiViewModel.uiState.value.currentOrientation.value
-        uiViewModel.uiState.value.orientationSavedFlag.value = true
+    if(!state.value.orientationSavedFlag.value) {
+        state.value.previousOrientation.value = state.value.currentOrientation.value
+        state.value.orientationSavedFlag.value = true
     }
 
     //If screen orientation event occured
-    if(uiViewModel.uiState.value.currentOrientation.value!=uiViewModel.uiState.value.previousOrientation.value) {
-        uiViewModel.uiState.value.orientationSavedFlag.value = false
+    if(state.value.currentOrientation.value!=state.value.previousOrientation.value) {
+        state.value.orientationSavedFlag.value = false
     }
 
     var TAG = "Error"
 
     var finalWidth by remember {mutableStateOf(0)}
     var finalHeight by remember {mutableStateOf(0)}
-    var offsetXImage by remember {mutableStateOf(0)}
-    var offsetYImage by remember {mutableStateOf(0)}
+    //var offsetXImage by remember {mutableStateOf(0)}
+    //var offsetYImage by remember {mutableStateOf(0)}
     var cropSquareColor = Color.DarkGray
     var widthRatio by remember { mutableStateOf(0f)}
     var heightRatio by remember { mutableStateOf(0f)}
 
-    val width: Int = bitmap.width
-    val height: Int = bitmap.height
+    val width = state.value.bitmap.value?.width!!
+    val height = state.value.bitmap.value?.height!!
     val ratioBitmap = width.toFloat() / height.toFloat() //Original bitmap aspect ratio
 
     var offset by remember { mutableStateOf(Offset.Zero)}
     var panOffset by remember {mutableStateOf(Offset.Zero)}
     var absoluteZoom by remember {mutableStateOf(1.0f)}
-    var zoom by remember {mutableStateOf(1f)}
+    //var zoom by remember {mutableStateOf(1f)}
     var rect by remember {mutableStateOf(Unit)}
-    var flag by remember {mutableStateOf(false)}
 
     var dragPos by remember {mutableStateOf(Offset(0f,0f))}
     var previousDragPos by remember {mutableStateOf(Offset(0f,0f))}
@@ -105,17 +102,17 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
 
     var toastShown by remember {mutableStateOf(false)}
 
-    val screenHeight by remember {mutableStateOf(uiViewModel.uiState.value.context.resources.displayMetrics.heightPixels)}
-    val reference by remember {mutableStateOf(100) }
+    val screenHeight by remember {mutableStateOf(state.value.context.resources.displayMetrics.heightPixels)}
+    val reference by remember {mutableStateOf(state.value.context.resources.getDimension(R.dimen.reference)) }
     val scalingFactor by remember { mutableStateOf((reference/100.0).toFloat())}
 
-    if(uiViewModel.uiState.value.currentOrientation.value== Configuration.ORIENTATION_PORTRAIT) {
+    if(state.value.currentOrientation.value== Configuration.ORIENTATION_PORTRAIT) {
         landscapeOffset = 0
     } else {
         landscapeOffset = ((scalingFactor * screenHeight)/2 - (2 * finalWidth/3)).toInt()
     }
 
-    if(!uiViewModel.uiState.value.cropRotationHorizontalFlag.value) {
+    if(!state.value.cropRotationHorizontalFlag.value) {
         widthRatio = (width.toFloat() / finalWidth.toFloat())
         heightRatio = (height.toFloat() / finalHeight.toFloat())
     } else {
@@ -124,34 +121,34 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
     }
 
     //Create cropped image
-    if (uiViewModel.uiState.value.allowCropBool.value) {
+    if (state.value.allowCropBool.value) {
         val panOffsetValue = panOffset * -1F
         try {
-            uiViewModel.uiState.value.cropResult.value = Bitmap.createBitmap(
-                uiViewModel.uiState.value.bitmap.value!!,
-                (widthRatio * (panOffsetValue.x + uiViewModel.uiState.value.offsetX.value)).toInt(), //x = width
-                (heightRatio * (panOffsetValue.y + uiViewModel.uiState.value.offsetY.value)).toInt(), //y = height
-                (widthRatio * uiViewModel.uiState.value.cropSquareX.value).toInt(),
-                (heightRatio * uiViewModel.uiState.value.cropSquareY.value).toInt()
+            state.value.cropResult.value = Bitmap.createBitmap(
+                state.value.bitmap.value!!,
+                (widthRatio * (panOffsetValue.x + state.value.offsetX.value)).toInt(), //x = width
+                (heightRatio * (panOffsetValue.y + state.value.offsetY.value)).toInt(), //y = height
+                (widthRatio * state.value.cropSquareX.value).toInt(),
+                (heightRatio * state.value.cropSquareY.value).toInt()
             )
-            uiViewModel.uiState.value.cropResultReady.value = true
+            state.value.cropResultReady.value = true
         } catch(e: Throwable) {
             Log.e(TAG,"Out of bounds error: " + e.message.toString())
-            uiViewModel.uiState.value.errorDialog.value = true
-            uiViewModel.uiState.value.allowCropBool.value = false
+            state.value.errorDialog.value = true
+            state.value.allowCropBool.value = false
             //Resets the crop box to the center
-            uiViewModel.uiState.value.cropSquareX.value = 400
-            uiViewModel.uiState.value.cropSquareY.value = 400
-            uiViewModel.uiState.value.cropSquareResetFlag.value = false
-            uiViewModel.uiState.value.cropSquareOffFlag.value = false
+            state.value.cropSquareX.value = 400
+            state.value.cropSquareY.value = 400
+            state.value.cropSquareResetFlag.value = false
+            state.value.cropSquareOffFlag.value = false
             offset = Offset(
-                (finalWidth.toFloat() - uiViewModel.uiState.value.cropSquareX.value) / 2,
-                (finalHeight.toFloat() - uiViewModel.uiState.value.cropSquareY.value) / 2
+                (finalWidth.toFloat() - state.value.cropSquareX.value) / 2,
+                (finalHeight.toFloat() - state.value.cropSquareY.value) / 2
             )
         }
     }
 
-    Scaffold(topBar = {cropTopBar(uiViewModel)}) {innerPadding ->
+    Scaffold(topBar = {cropTopBar(state, uiViewModel)}) {innerPadding ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
@@ -167,11 +164,11 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     .pointerInput(Unit) {
                         detectTransformGestures { centroid, pan, gestureZoom, gestureRotate ->
                             if(!toastShown) {
-                                Toast.makeText(uiViewModel.uiState.value.context,"Tip: Long-press the cropbox corners to resize", Toast.LENGTH_LONG).show()
+                                Toast.makeText(state.value.context,"Tip: Long-press the cropbox corners to resize", Toast.LENGTH_LONG).show()
                                 toastShown = true
                             }
 
-                            if(uiViewModel.uiState.value.cropSquareOffFlag.value) {
+                            if(state.value.cropSquareOffFlag.value) {
                                 absoluteZoom *= gestureZoom
                                 finalWidth = (finalWidth * gestureZoom).toInt()
                                 finalHeight = (finalHeight * gestureZoom).toInt()
@@ -189,7 +186,7 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     }
 
             ) {
-                if(!uiViewModel.uiState.value.cropInitializationFlag.value) {
+                if(!state.value.cropInitializationFlag.value) {
                     //The maximum aspect ratio by Canvas
                     val ratioMax = size.width / size.height
 
@@ -206,10 +203,10 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     panOffset = Offset.Zero
                     absoluteZoom = 1.0f
 
-                    uiViewModel.uiState.value.cropRotationHorizontalFlag.value = false
-                    uiViewModel.uiState.value.cropSquareResetFlag.value = false
-                    uiViewModel.uiState.value.cropSquareOffFlag.value = false
-                    uiViewModel.uiState.value.cropInitializationFlag.value = true
+                    state.value.cropRotationHorizontalFlag.value = false
+                    state.value.cropSquareResetFlag.value = false
+                    state.value.cropSquareOffFlag.value = false
+                    state.value.cropInitializationFlag.value = true
                 }
 
                 /*
@@ -218,103 +215,103 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 offsetYImage = (size.height - finalHeight) / 2 */
 
                 //Set the position to the center of image at the beginning
-                if (!uiViewModel.uiState.value.cropSquareResetFlag.value) {
+                if (!state.value.cropSquareResetFlag.value) {
                     offset = Offset(
-                        (finalWidth.toFloat() - uiViewModel.uiState.value.cropSquareX.value) / 2,
-                        (finalHeight.toFloat() - uiViewModel.uiState.value.cropSquareY.value) / 2
+                        (finalWidth.toFloat() - state.value.cropSquareX.value) / 2,
+                        (finalHeight.toFloat() - state.value.cropSquareY.value) / 2
                     )
-                    uiViewModel.uiState.value.cropSquareResetFlag.value = true
+                    state.value.cropSquareResetFlag.value = true
                 }
 
                 //Set the threshold according to be 1/6th of cropSquare size (double of 1/3rd, but convenient for multiplication)
-                uiViewModel.uiState.value.thresholdX.value = uiViewModel.uiState.value.cropSquareX.value/6
-                uiViewModel.uiState.value.thresholdY.value = uiViewModel.uiState.value.cropSquareY.value/6
+                state.value.thresholdX.value = state.value.cropSquareX.value/6
+                state.value.thresholdY.value = state.value.cropSquareY.value/6
 
                 //If there's a change to dragPos
                 if(previousDragPos != dragPos) {
                     //If none of the flags are currently raised, run raiseDirectionalFlag
                     // to check if the offset is within bounds of the crop square
-                    if(!uiViewModel.uiState.value.westFlag.value &&
-                        !uiViewModel.uiState.value.northFlag.value &&
-                        !uiViewModel.uiState.value.eastFlag.value &&
-                        !uiViewModel.uiState.value.southFlag.value
+                    if(!state.value.westFlag.value &&
+                        !state.value.northFlag.value &&
+                        !state.value.eastFlag.value &&
+                        !state.value.southFlag.value
                     ) {
-                        raiseDirectionalFlag(dragPos, landscapeOffset, uiViewModel)
+                        raiseDirectionalFlag(dragPos, landscapeOffset, state, uiViewModel)
                     }
 
                     //If westFlag is raised
-                    if(uiViewModel.uiState.value.westFlag.value) {
+                    if(state.value.westFlag.value) {
                         //Outside changes
                         if(dragMagnitude.x < 0) {
-                            uiViewModel.uiState.value.offsetX.value += dragMagnitude.x
+                            state.value.offsetX.value += dragMagnitude.x
                             offset += Offset(dragMagnitude.x,0f)
-                            uiViewModel.uiState.value.cropSquareX.value -= dragMagnitude.x.toInt()
+                            state.value.cropSquareX.value -= dragMagnitude.x.toInt()
                         }
                         //Inside changes
                         else if(dragMagnitude.x > 0) {
-                            uiViewModel.uiState.value.offsetX.value += dragMagnitude.x
+                            state.value.offsetX.value += dragMagnitude.x
                             offset += Offset(dragMagnitude.x,0f)
-                            uiViewModel.uiState.value.cropSquareX.value -= dragMagnitude.x.toInt()
+                            state.value.cropSquareX.value -= dragMagnitude.x.toInt()
                         }
                     }
                     //If northFlag is raised
-                    if(uiViewModel.uiState.value.northFlag.value) {
+                    if(state.value.northFlag.value) {
                         //Outside changes
                         if(dragMagnitude.y < 0) {
-                            uiViewModel.uiState.value.offsetY.value += dragMagnitude.y
+                            state.value.offsetY.value += dragMagnitude.y
                             offset += Offset(0f,dragMagnitude.y)
-                            uiViewModel.uiState.value.cropSquareY.value -= dragMagnitude.y.toInt()
+                            state.value.cropSquareY.value -= dragMagnitude.y.toInt()
                         }
                         //Inside changes
                         else if(dragMagnitude.y > 0) {
-                            uiViewModel.uiState.value.offsetY.value += dragMagnitude.y
+                            state.value.offsetY.value += dragMagnitude.y
                             offset += Offset(0f,dragMagnitude.y)
-                            uiViewModel.uiState.value.cropSquareY.value -= dragMagnitude.y.toInt()
+                            state.value.cropSquareY.value -= dragMagnitude.y.toInt()
                         }
                     }
                     //If eastFlag is raised
-                    if(uiViewModel.uiState.value.eastFlag.value) {
+                    if(state.value.eastFlag.value) {
                         //Outside changes
                         if(dragMagnitude.x > 0) {
-                            uiViewModel.uiState.value.cropSquareX.value += dragMagnitude.x.toInt()
+                            state.value.cropSquareX.value += dragMagnitude.x.toInt()
                         }
                         //Inside changes
                         else if(dragMagnitude.x < 0) {
-                            uiViewModel.uiState.value.cropSquareX.value += dragMagnitude.x.toInt()
+                            state.value.cropSquareX.value += dragMagnitude.x.toInt()
                         }
                     }
                     //If southFlag is raised
-                    if(uiViewModel.uiState.value.southFlag.value) {
+                    if(state.value.southFlag.value) {
                         //Outside changes
                         if(dragMagnitude.y > 0) {
-                            uiViewModel.uiState.value.cropSquareY.value += dragMagnitude.y.toInt()
+                            state.value.cropSquareY.value += dragMagnitude.y.toInt()
                         }
                         //Inside changes
                         else if(dragMagnitude.y < 0) {
-                            uiViewModel.uiState.value.cropSquareY.value += dragMagnitude.y.toInt()
+                            state.value.cropSquareY.value += dragMagnitude.y.toInt()
                         }
                     }
                 }
                 //If there's no change to dragPos, set all directional flags to false
                 else {
-                    uiViewModel.uiState.value.westFlag.value = false
-                    uiViewModel.uiState.value.northFlag.value = false
-                    uiViewModel.uiState.value.eastFlag.value = false
-                    uiViewModel.uiState.value.southFlag.value = false
+                    state.value.westFlag.value = false
+                    state.value.northFlag.value = false
+                    state.value.eastFlag.value = false
+                    state.value.southFlag.value = false
 
-                    uiViewModel.uiState.value.offsetX.value = offset.x
-                    uiViewModel.uiState.value.offsetY.value = offset.y
+                    state.value.offsetX.value = offset.x
+                    state.value.offsetY.value = offset.y
                 }
 
-                if(!uiViewModel.uiState.value.cropRotationHorizontalFlag.value) {
+                if(!state.value.cropRotationHorizontalFlag.value) {
                     drawImage(
-                        image = uiViewModel.uiState.value.bitmap.value!!.asImageBitmap(),
+                        image = state.value.bitmap.value!!.asImageBitmap(),
                         dstSize = IntSize(finalWidth, finalHeight),
                         dstOffset = IntOffset(landscapeOffset + panOffset.x.toInt(),panOffset.y.toInt())
                     )
                 } else {
                     drawImage(
-                        image = uiViewModel.uiState.value.bitmap.value!!.asImageBitmap(),
+                        image = state.value.bitmap.value!!.asImageBitmap(),
                         dstSize = IntSize(finalHeight, finalWidth),
                         dstOffset = IntOffset(landscapeOffset + panOffset.x.toInt(),panOffset.y.toInt())
                     )
@@ -322,33 +319,33 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
 
                 /*
                 //Bounding the crop box to the dimensions of the image
-                if (uiViewModel.uiState.value.offsetX.value < 0f) {
-                    uiViewModel.uiState.value.offsetX.value = 0f
-                } else if ((uiViewModel.uiState.value.offsetX.value + (uiViewModel.uiState.value.cropSquareX.value * zoomX)) > finalWidth) {
-                    uiViewModel.uiState.value.offsetX.value = finalWidth - (uiViewModel.uiState.value.cropSquareX.value * zoom)
+                if (state.value.offsetX.value < 0f) {
+                    state.value.offsetX.value = 0f
+                } else if ((state.value.offsetX.value + (state.value.cropSquareX.value * zoomX)) > finalWidth) {
+                    state.value.offsetX.value = finalWidth - (state.value.cropSquareX.value * zoom)
                 }
-                if (uiViewModel.uiState.value.offsetY.value < 0f) {
-                    uiViewModel.uiState.value.offsetY.value = 0f
-                } else if ((uiViewModel.uiState.value.offsetY.value + (uiViewModel.uiState.value.cropSquareY.value * zoomY)) > finalHeight) {
-                    uiViewModel.uiState.value.offsetY.value = finalHeight - (uiViewModel.uiState.value.cropSquareY.value * zoom)
+                if (state.value.offsetY.value < 0f) {
+                    state.value.offsetY.value = 0f
+                } else if ((state.value.offsetY.value + (state.value.cropSquareY.value * zoomY)) > finalHeight) {
+                    state.value.offsetY.value = finalHeight - (state.value.cropSquareY.value * zoom)
                 } */
 
-                if(!uiViewModel.uiState.value.allowCropBool.value && !uiViewModel.uiState.value.cropSquareOffFlag.value) {
+                if(!state.value.allowCropBool.value && !state.value.cropSquareOffFlag.value) {
                     //Draw the cropbox when allowCropBool is true (not previewing the crop image)
                     rect = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value + landscapeOffset, uiViewModel.uiState.value.offsetY.value),
-                        size = Size(uiViewModel.uiState.value.cropSquareX.value.toFloat(), uiViewModel.uiState.value.cropSquareY.value.toFloat()),
+                        topLeft = Offset(state.value.offsetX.value + landscapeOffset, state.value.offsetY.value),
+                        size = Size(state.value.cropSquareX.value.toFloat(), state.value.cropSquareY.value.toFloat()),
                         style = Stroke(3.dp.toPx())
                     )
                     rect
 
                     //Dynamic polygonSize
-                    if(uiViewModel.uiState.value.cropSquareX.value<=50 || uiViewModel.uiState.value.cropSquareY.value<=50) {
+                    if(state.value.cropSquareX.value<=50 || state.value.cropSquareY.value<=50) {
                         polygonSize = 15f
                     }
-                    else if((uiViewModel.uiState.value.cropSquareX.value in 51..99) ||
-                        (uiViewModel.uiState.value.cropSquareY.value in 51..99)) {
+                    else if((state.value.cropSquareX.value in 51..99) ||
+                        (state.value.cropSquareY.value in 51..99)) {
                         polygonSize = 20f
                     }
                     else {
@@ -358,64 +355,64 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                     //Draw the resize polygons
                     var westPolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value-(polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value + (0.5 * uiViewModel.uiState.value.cropSquareY.value).toFloat()-(polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value-(polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value + (0.5 * state.value.cropSquareY.value).toFloat()-(polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     westPolygon
 
                     var northPolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-(polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value-(polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value + (0.5*state.value.cropSquareX.value).toFloat()-(polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value-(polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     northPolygon
 
                     var eastPolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - (polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value + (0.5*uiViewModel.uiState.value.cropSquareY.value).toFloat()-(polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value + state.value.cropSquareX.value - (polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value + (0.5*state.value.cropSquareY.value).toFloat()-(polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     eastPolygon
 
                     var southPolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value + (0.5*uiViewModel.uiState.value.cropSquareX.value).toFloat()-(polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - (polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value + (0.5*state.value.cropSquareX.value).toFloat()-(polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value + state.value.cropSquareY.value - (polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     southPolygon
 
                     var nwPolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value-(polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value-(polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value-(polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value-(polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     nwPolygon
 
                     var nePolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value+uiViewModel.uiState.value.cropSquareX.value-(polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value-(polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value+state.value.cropSquareX.value-(polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value-(polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     nePolygon
 
                     var sePolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value + uiViewModel.uiState.value.cropSquareX.value - (polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - (polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value + state.value.cropSquareX.value - (polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value + state.value.cropSquareY.value - (polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     sePolygon
 
                     var swPolygon = drawRect(
                         color = cropSquareColor,
-                        topLeft = Offset(uiViewModel.uiState.value.offsetX.value - (polygonSize/2) + landscapeOffset,
-                            uiViewModel.uiState.value.offsetY.value + uiViewModel.uiState.value.cropSquareY.value - (polygonSize/2)),
+                        topLeft = Offset(state.value.offsetX.value - (polygonSize/2) + landscapeOffset,
+                            state.value.offsetY.value + state.value.cropSquareY.value - (polygonSize/2)),
                         size = Size(polygonSize,polygonSize)
                     )
                     swPolygon
@@ -428,13 +425,13 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
                 previousDragPos = dragPos
             }
             when {
-                uiViewModel.uiState.value.cropResultReady.value -> {
-                    resultDialog(uiViewModel = uiViewModel)
+                state.value.cropResultReady.value -> {
+                    resultDialog(state = state, uiViewModel = uiViewModel)
                 }
             }
             when {
-                uiViewModel.uiState.value.errorDialog.value -> {
-                    errorDialog(uiViewModel = uiViewModel, message = "The crop box is out of bounds.")
+                state.value.errorDialog.value -> {
+                    errorDialog(state = state, uiViewModel = uiViewModel, message = "The crop box is out of bounds.")
                 }
             }
         }
@@ -442,19 +439,18 @@ fun crop(imageScale: Float, bitmap: Bitmap, uiViewModel: UiViewModel) {
 
 }
 
-@SuppressLint("StateFlowValueCalledInComposition")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun cropTopBar(uiViewModel: UiViewModel) {
+fun cropTopBar(state: State<UiState>, uiViewModel: UiViewModel) {
 
     var rotateDropMenuBool by remember {mutableStateOf(false)}
 
-    var zoomCropLabel = when(uiViewModel.uiState.value.cropSquareOffFlag.value) {
+    var zoomCropLabel = when(state.value.cropSquareOffFlag.value) {
         false -> "Zoom"
         true -> "Crop box"
     }
 
-    var zoomCropIcon = when(uiViewModel.uiState.value.cropSquareOffFlag.value) {
+    var zoomCropIcon = when(state.value.cropSquareOffFlag.value) {
         false -> R.drawable.zoom_in_24px
         true -> R.drawable.crop_free_24px
     }
@@ -463,21 +459,22 @@ fun cropTopBar(uiViewModel: UiViewModel) {
         title = {},
         colors = TopAppBarDefaults.topAppBarColors(),
         navigationIcon = {
+            /*
             IconButton(
                 onClick = {
                     //navigate up
                 }
             ) {
                 Icon(painter = painterResource(R.drawable.arrow_back_24px), contentDescription = null)
-            }
+            } */
         },
         actions = {
-            if(!uiViewModel.uiState.value.allowCropBool.value) {
+            if(!state.value.allowCropBool.value) {
                 //Zoom/Crop mode
                 IconButton(
                     onClick = {
-                        uiViewModel.uiState.value.cropSquareOffFlag.value =
-                            !uiViewModel.uiState.value.cropSquareOffFlag.value
+                        state.value.cropSquareOffFlag.value =
+                            !state.value.cropSquareOffFlag.value
                     },
                     modifier = Modifier
                         .size(60.dp)
@@ -502,7 +499,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                 //Reset (image)
                 IconButton(
                     onClick = {
-                        uiViewModel.uiState.value.cropInitializationFlag.value = false
+                        state.value.cropInitializationFlag.value = false
                     },
                     modifier = Modifier
                         .size(60.dp)
@@ -563,7 +560,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                                 )
                             },
                             onClick = {
-                                uiViewModel.uiState.value.bitmap.value = rotateBitmap(uiViewModel, uiViewModel.uiState.value.bitmap.value!!, 90F)
+                                state.value.bitmap.value = rotateBitmap(state, uiViewModel, state.value.bitmap.value!!, 90F)
                                 rotateDropMenuBool = false
                             })
 
@@ -583,7 +580,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                                 )
                             },
                             onClick = {
-                                uiViewModel.uiState.value.bitmap.value = rotateBitmap(uiViewModel, uiViewModel.uiState.value.bitmap.value!!, -90F)
+                                state.value.bitmap.value = rotateBitmap(state, uiViewModel, state.value.bitmap.value!!, -90F)
                                 rotateDropMenuBool = false
                             })
                     }
@@ -592,7 +589,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                 Spacer(modifier = Modifier.width(30.dp))
 
                     IconButton(
-                        onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value},
+                        onClick = {state.value.allowCropBool.value = !state.value.allowCropBool.value},
                         modifier = Modifier
                             .size(60.dp)
                             .border(width = 0.dp, color = Color.Unspecified, shape = RectangleShape),
@@ -606,7 +603,7 @@ fun cropTopBar(uiViewModel: UiViewModel) {
             else {
                 //Cancel
                 IconButton(
-                    onClick = {uiViewModel.uiState.value.allowCropBool.value = !uiViewModel.uiState.value.allowCropBool.value},
+                    onClick = {state.value.allowCropBool.value = !state.value.allowCropBool.value},
                     modifier = Modifier
                         .size(60.dp)
                         .border(width = 0.dp, color = Color.Unspecified, shape = RectangleShape),
@@ -630,34 +627,31 @@ fun cropTopBar(uiViewModel: UiViewModel) {
                     }
                 }
             }
-
-
-
         }
     )
 }
 
-@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun resultDialog(
+    state: State<UiState>,
     uiViewModel: UiViewModel
 ) {
     Dialog(onDismissRequest = {
-        uiViewModel.uiState.value.cropResultReady.value = false
-        uiViewModel.uiState.value.allowCropBool.value = false},
+        state.value.cropResultReady.value = false
+        state.value.allowCropBool.value = false},
     ) {
         Card(
             modifier = Modifier
                 .background(color = Color.Unspecified)
-                .width((0.4*uiViewModel.uiState.value.cropSquareX.value-12).dp)
-                .height((0.4*uiViewModel.uiState.value.cropSquareY.value-10).dp)
+                .width((0.4*state.value.cropSquareX.value-12).dp)
+                .height((0.4*state.value.cropSquareY.value-10).dp)
         ) {
 
             Canvas(modifier = Modifier) {
                 try {
                     drawImage(
-                        uiViewModel.uiState.value.cropResult.value!!.asImageBitmap(),
-                        dstSize = IntSize((uiViewModel.uiState.value.cropSquareX.value), (uiViewModel.uiState.value.cropSquareY.value)),
+                        state.value.cropResult.value!!.asImageBitmap(),
+                        dstSize = IntSize((state.value.cropSquareX.value), (state.value.cropSquareY.value)),
                     )
                 } catch(e: Throwable) {
                     Log.d("Error",e.stackTraceToString())
@@ -670,10 +664,11 @@ fun resultDialog(
 
 @Composable
 fun errorDialog(
+    state: State<UiState>,
     uiViewModel: UiViewModel,
     message:String
 ) {
-    Dialog(onDismissRequest = {uiViewModel.uiState.value.errorDialog.value = false}) {
+    Dialog(onDismissRequest = {state.value.errorDialog.value = false}) {
         Card(modifier = Modifier
             .background(color = Color.White,RoundedCornerShape(24.dp))
         ) {
@@ -696,7 +691,7 @@ fun errorDialog(
                             //.padding(0.dp,5.dp,0.dp,0.dp)
                             .size(32.dp)
                             .clickable {
-                                uiViewModel.uiState.value.errorDialog.value = false
+                                state.value.errorDialog.value = false
                             }
                     )
                 }
@@ -716,13 +711,13 @@ fun errorDialog(
 }
 
 //Function to raise a directional flag for the size change of cropping square
-fun raiseDirectionalFlag(dragPos: Offset, landscapeOffset: Int, uiViewModel: UiViewModel) {
-    var offsetX = uiViewModel.uiState.value.offsetX.value
-    var offsetY = uiViewModel.uiState.value.offsetY.value
-    var cropSquareX = uiViewModel.uiState.value.cropSquareX.value
-    var cropSquareY = uiViewModel.uiState.value.cropSquareY.value
-    var thresholdX = uiViewModel.uiState.value.thresholdX.value
-    var thresholdY = uiViewModel.uiState.value.thresholdY.value
+fun raiseDirectionalFlag(dragPos: Offset, landscapeOffset: Int, state: State<UiState>, uiViewModel: UiViewModel) {
+    var offsetX = state.value.offsetX.value
+    var offsetY = state.value.offsetY.value
+    var cropSquareX = state.value.cropSquareX.value
+    var cropSquareY = state.value.cropSquareY.value
+    var thresholdX = state.value.thresholdX.value
+    var thresholdY = state.value.thresholdY.value
 
     //The 8 directional points of the crop square
     var westPoint = Offset(offsetX + landscapeOffset,offsetY + (0.5*cropSquareY).toFloat())
@@ -783,37 +778,37 @@ fun raiseDirectionalFlag(dragPos: Offset, landscapeOffset: Int, uiViewModel: UiV
     var swPoint_south = swPoint.y + thresholdY
 
     if(dragPos.x >= westPoint_west && dragPos.x <= westPoint_east && dragPos.y >= westPoint_north && dragPos.y <= westPoint_south) {
-        uiViewModel.uiState.value.westFlag.value = true
+        state.value.westFlag.value = true
     }
     else if(dragPos.x >= northPoint_west && dragPos.x <= northPoint_east && dragPos.y >= northPoint_north && dragPos.y <= northPoint_south) {
-        uiViewModel.uiState.value.northFlag.value = true
+        state.value.northFlag.value = true
     }
     else if(dragPos.x >= eastPoint_west && dragPos.x <= eastPoint_east && dragPos.y >= eastPoint_north && dragPos.y <= eastPoint_south) {
-        uiViewModel.uiState.value.eastFlag.value = true
+        state.value.eastFlag.value = true
     }
     else if(dragPos.x >= southPoint_west && dragPos.x <= southPoint_east && dragPos.y >= southPoint_north && dragPos.y <= southPoint_south) {
-        uiViewModel.uiState.value.southFlag.value = true
+        state.value.southFlag.value = true
     }
     else if(dragPos.x >= nwPoint_west && dragPos.x <= nwPoint_east && dragPos.y >= nwPoint_north && dragPos.y <= nwPoint_south) {
-        uiViewModel.uiState.value.northFlag.value = true
-        uiViewModel.uiState.value.westFlag.value = true
+        state.value.northFlag.value = true
+        state.value.westFlag.value = true
     }
     else if(dragPos.x >= nePoint_west && dragPos.x <= nePoint_east && dragPos.y >= nePoint_north && dragPos.y <= nePoint_south) {
-        uiViewModel.uiState.value.northFlag.value = true
-        uiViewModel.uiState.value.eastFlag.value = true
+        state.value.northFlag.value = true
+        state.value.eastFlag.value = true
     }
     else if(dragPos.x >= sePoint_west && dragPos.x <= sePoint_east && dragPos.y >= sePoint_north && dragPos.y <= sePoint_south) {
-        uiViewModel.uiState.value.southFlag.value = true
-        uiViewModel.uiState.value.eastFlag.value = true
+        state.value.southFlag.value = true
+        state.value.eastFlag.value = true
     }
     else if(dragPos.x >= swPoint_west && dragPos.x <= swPoint_east && dragPos.y >= swPoint_north && dragPos.y <= swPoint_south) {
-        uiViewModel.uiState.value.southFlag.value = true
-        uiViewModel.uiState.value.westFlag.value = true
+        state.value.southFlag.value = true
+        state.value.westFlag.value = true
     }
 }
 
-fun rotateBitmap(uiViewModel: UiViewModel, bitmap: Bitmap, rotationDegrees: Float): Bitmap {
-    uiViewModel.uiState.value.cropRotationHorizontalFlag.value = !uiViewModel.uiState.value.cropRotationHorizontalFlag.value
+fun rotateBitmap(state: State<UiState>, uiViewModel: UiViewModel, bitmap: Bitmap, rotationDegrees: Float): Bitmap {
+    state.value.cropRotationHorizontalFlag.value = !state.value.cropRotationHorizontalFlag.value
     val matrix = Matrix()
     matrix.postRotate(rotationDegrees)
     val scaledBitmap = Bitmap.createScaledBitmap(bitmap,bitmap.width,bitmap.height,true)

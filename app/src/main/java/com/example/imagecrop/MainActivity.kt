@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -46,9 +47,11 @@ class MainActivity : ComponentActivity() {
 fun imageCrop(modifier: Modifier = Modifier) {
     var context = LocalContext.current
     var uiViewModel = UiViewModel(true, context = context)
-    var imageBitmap = ImageBitmap.imageResource(R.drawable.cat)
-    var bitmap =  imageBitmap.asAndroidBitmap()
-    crop(1.0f,bitmap,uiViewModel)
+    val state = uiViewModel.uiState.collectAsState()
+    var bitmap =  ImageBitmap.imageResource(R.drawable.grass_public).asAndroidBitmap()
+
+    state.value.bitmap.value = bitmap
+    crop(1.0f,state,uiViewModel)
 
 }
 
