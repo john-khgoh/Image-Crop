@@ -1,4 +1,4 @@
-<h1>Image Crop</h1>
+# Image Crop 
 This is a simple crop library for Jetpack compose with the following features:  
 - Rotate  
 - Zoom  
