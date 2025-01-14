@@ -58,6 +58,7 @@ data class UiViewModel(var openDialog: Boolean, var context: Context): ViewModel
 }
 
 data class UiState constructor(
+    var bitmap: MutableState<Bitmap?> = mutableStateOf(null),
     var allowCropBool: MutableState<Boolean> = mutableStateOf(false),
     var cropResultReady: MutableState<Boolean> = mutableStateOf(false),
     var errorDialog: MutableState<Boolean> = mutableStateOf(false),
@@ -73,5 +74,12 @@ data class UiState constructor(
     var cropSquareY: MutableState<Int> = mutableStateOf(400),
     var thresholdX: MutableState<Int> = mutableStateOf(65),
     var thresholdY: MutableState<Int> = mutableStateOf(65),
+    var previousOrientation: MutableState<Int> = mutableStateOf(0),
+    var currentOrientation: MutableState<Int> = mutableStateOf(0),
+    var orientationSavedFlag: MutableState<Boolean> = mutableStateOf(false),
+    var cropRotationHorizontalFlag: MutableState<Boolean> = mutableStateOf(false),
+    var cropSquareOffFlag: MutableState<Boolean> = mutableStateOf(false),
+    var cropInitializationFlag: MutableState<Boolean> = mutableStateOf(false),
+    var cropSquareResetFlag: MutableState<Boolean> = mutableStateOf(false),
 )
 
