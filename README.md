@@ -6,8 +6,7 @@ This is a simple crop library for Jetpack compose with the following features:
 
 To resize the crop box, long-press one of the corners.   
 
-  
-<img src="https://imgur.com/QCxMrRo" width="400" height="880"/>
+<img src="https://imgur.com/a/ONTMT0C" width="400" height="880"/>
 
 Licensed under the Apache 2.0 License. 
 
